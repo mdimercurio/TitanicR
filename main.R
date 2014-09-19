@@ -1,26 +1,51 @@
-library(data.table)
+# Load libraries ================================
 
-library(rpart)
-library(rattle)
-library(rpart.plot)
+library(data.table)
+library(ggplot2)
 library(RColorBrewer)
 
-train <- fread('./data/train.csv')
-test <- fread('./data/test.csv')
+# Read the data =================================
 
-# Dataset visualization =========================
+train <- read.csv('./data/train.csv')
+train$SurvivedFact <- as.factor(train$Survived)
 
-head(train)
-str(train)
+test <- read.csv('./data/test.csv')
 
-# Preprocessing =================================
+# Exploratory analysis ==========================
+# Understanding your data
 
-train[,Survived:=as.factor(Survived)]
-train[,PclassFact:=as.factor(Pclass)]
-train[,Sex:=as.factor(Sex)]
-train[,SibSpFact:=as.factor(SibSp)]
-train[,ParchFact:=as.factor(Parch)]
-train[,Embarked:=as.factor(Embarked)]
+fix(train)
+summary(train)
+
+# Count number of NAs
+apply(train, 2, function(x) length(which(is.na(x))))
+
+# Plot distributions
+qplot(train$Fare, binwidth=1)
+qplot(train$Age, binwidth=1)
+
+# Try to identify relevant variables
+table(train$Survived, train$Sex)
+prop.table(table(train$Survived, train$Sex),2)
+
+aggregate(Survived ~ Sex, data=train, FUN=function(x) {round(sum(x)/length(x),digits=2)})
+aggregate(Survived ~ Pclass, data=train, FUN=function(x) {round(sum(x)/length(x),digits=2)})
+aggregate(Survived ~ Pclass + Sex, data=train, FUN=function(x) {round(sum(x)/length(x),digits=2)})
+
+# Scatter plots
+qplot(Age, Sex, colour=SurvivedFact, data=train, geom="point", alpha = I(0.5))
+qplot(Age, Fare, colour=SurvivedFact, data=train, geom="point", alpha = I(0.5)
+      , ylim=c(0, 300))
+
+# Box plot
+ggplot(train, aes(x=SurvivedFact, y=Fare, fill=SurvivedFact)) + geom_boxplot() + 
+  guides(fill=FALSE) + coord_flip() + ylim(0, 200)
+
+# Density plots
+#ggplot(train, aes(x=Age, fill=SurvivedFact)) + geom_density(alpha=.3)
+#ggplot(train, aes(x=Fare, fill=SurvivedFact)) + geom_density(alpha=.3)
+
+
 
 #TODO extract title from Name
 #TODO create age bin (5/10/20)
@@ -31,13 +56,6 @@ train[,Embarked:=as.factor(Embarked)]
 #TODO create Fare bin
 #TODO extract info from Cabin
 
-# Compute the error rate on the training set
-computeError <- function(train, predictions) {
-  t <- table(predictions, train$Survived, useNA="ifany")
-  
-  errorRate <- (sum(t) - t[1,1] - t[2,2]) / sum(t)
-  return(errorRate)  
-}
 # Create a file ready for submission on Kaggles website
 # and a file describing the model used
 createSubmissionFile <- function(train, test, predictions, model) {
@@ -59,22 +77,33 @@ createSubmissionFile <- function(train, test, predictions, model) {
   # TODO add error on training set
 }
 
-# Modeling ======================================
-
-# Logistic Regression
+# Logistic Regression ===========================
 #TODO Look into http://data.princeton.edu/R/glms.html
-logRegModel1 <- glm( Survived ~ 
-       +  Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, family = binomial, data=train)
+# Create a model
+glm.fit <- glm( SurvivedFact ~ 
+       +  Sex + Pclass, family = binomial, data=train)
 
-trainPredict <- predict.glm(logRegModel1, newdata=train, type="response")
-trainPredictBool <- ifelse(trainPredict > 0.6, 1, 0)
+summary(glm.fit)
 
-testPredict <- predict.glm(logRegModel1, newdata=test, type="response")
-testPredictBool <- ifelse(testPredict > 0.5, 1, 0)
+# Apply the model to the training set
+trainPredict <- predict(glm.fit, type="response")
+head(trainPredict)
+# Convert the result to binary response
+cutoff <- 0.5
+trainPredict <- ifelse(trainPredict > cutoff, 1, 0)
 
-createSubmissionFile(train, test, testPredictBool, logRegModel1)
+# Evaluate the prediction on the training set
+table(trainPredict, train$SurvivedFact, dnn=c('Predict','Actual'))
+prop.table(table(trainPredict, train$SurvivedFact, dnn=c('Predict','Actual')),1)
+# Error rate
+mean(trainPredict != train$SurvivedFact)
+
+testPredict <- predict.glm(glm.fit, newdata=test, type="response")
+testPredict <- ifelse(testPredict > cutoff, 1, 0)
+
+createSubmissionFile(train, test, testPredict, glm.fit)
  
-# Decision Tree
+# Decision Tree =================================
 
 fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data=train, method="class")
 
@@ -85,3 +114,9 @@ fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, da
 Prediction <- predict(fit, test, type = "class")
 
 createSubmissionFile(train, test, Prediction, fit)
+
+
+# Going further =================================
+# Cross validation
+# Classification tree
+# Feature engineering (polynomial, interaction terms, ...)
