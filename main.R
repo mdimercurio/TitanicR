@@ -5,6 +5,26 @@ library(rpart)
 library(ggplot2)
 library(RColorBrewer)
 library(rattle)
+
+createSubmissionFile <- function(train, test, predictions, model) {
+  
+  SubmissionFileName <- paste('./output/Titanic Submission ', gsub('[[:punct:]]', '-', Sys.time()), '.csv', sep='')
+  DescriptionFileName <- paste ('./output/Titanic Submission Description ', gsub('[[:punct:]]', '-', Sys.time()), '.txt', sep='')
+  
+  # Replace NAs predictions by 0
+  numNAs <- sum(is.na(predictions))
+  predictions[is.na(predictions)] <- 0
+  
+  submit <- data.frame(PassengerId = test$PassengerId, Survived = predictions)
+  
+  write.csv(submit, file = SubmissionFileName, row.names = FALSE)
+  
+  # Create a description file, including the model description and the number of NAs 
+  write(as.character(model$call),file=DescriptionFileName,append=TRUE)
+  write(paste('Number of NAs: ', numNAs),file=DescriptionFileName,append=TRUE)
+  # TODO add error on training set
+}
+
 # Read the data =================================
 
 train <- read.csv('./data/train.csv')
@@ -48,27 +68,8 @@ aggregate(Survived ~ Pclass + Sex, data=train, FUN=function(x) {round(sum(x)/len
 
 # Create a file ready for submission on Kaggles website
 # and a file describing the model used
-createSubmissionFile <- function(train, test, predictions, model) {
-  
-  SubmissionFileName <- paste('./output/Titanic Submission ', gsub('[[:punct:]]', '-', Sys.time()), '.csv', sep='')
-  DescriptionFileName <- paste ('./output/Titanic Submission Description ', gsub('[[:punct:]]', '-', Sys.time()), '.txt', sep='')
-  
-  # Replace NAs predictions by 0
-  numNAs <- sum(is.na(predictions))
-  predictions[is.na(predictions)] <- 0
-    
-  submit <- data.frame(PassengerId = test$PassengerId, Survived = predictions)
-  
-  write.csv(submit, file = SubmissionFileName, row.names = FALSE)
-  
-  # Create a description file, including the model description and the number of NAs 
-  write(as.character(model$call),file=DescriptionFileName,append=TRUE)
-  write(paste('Number of NAs: ', numNAs),file=DescriptionFileName,append=TRUE)
-  # TODO add error on training set
-}
 
 # Logistic Regression ===========================
-#TODO Look into http://data.princeton.edu/R/glms.html
 # Create a model
 glm.fit <- glm( SurvivedFact ~ 
                   +  Sex + Pclass, family = binomial, data=train)
@@ -91,7 +92,7 @@ testPredict <- predict.glm(glm.fit, newdata=test, type="response")
 testPredict <- ifelse(testPredict > cutoff, 1, 0)
 
 createSubmissionFile(train, test, testPredict, glm.fit)
- 
+
 # Comparing two models ==========================
 
 glm.fit1 <- glm( SurvivedFact ~ 
@@ -103,7 +104,6 @@ summary(glm.fit1)
 summary(glm.fit2)
 
 anova(glm.fit1, glm.fit2, test = "Chisq")
-
 
 # Decision Tree =================================
 

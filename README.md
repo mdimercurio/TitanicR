@@ -11,6 +11,8 @@ From Trevor's blog:
 
 [Feature exploration](http://trevorstephens.com/post/72920580937/titanic-getting-started-with-r-part-2-the)
 
+[Logistic Regression in R](http://data.princeton.edu/R/glms.html)
+
 Getting started with R
 ========
 [Install R](http://cran.at.r-project.org/)
