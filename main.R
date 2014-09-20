@@ -1,9 +1,10 @@
 # Load libraries ================================
 
 library(data.table)
+library(rpart)
 library(ggplot2)
 library(RColorBrewer)
-
+library(rattle)
 # Read the data =================================
 
 train <- read.csv('./data/train.csv')
@@ -19,10 +20,11 @@ summary(train)
 
 # Count number of NAs
 apply(train, 2, function(x) length(which(is.na(x))))
+apply(test, 2, function(x) length(which(is.na(x))))
 
 # Plot distributions
 qplot(train$Fare, binwidth=1)
-qplot(train$Age, binwidth=1)
+#qplot(train$Age, binwidth=1)
 
 # Try to identify relevant variables
 table(train$Survived, train$Sex)
@@ -33,28 +35,16 @@ aggregate(Survived ~ Pclass, data=train, FUN=function(x) {round(sum(x)/length(x)
 aggregate(Survived ~ Pclass + Sex, data=train, FUN=function(x) {round(sum(x)/length(x),digits=2)})
 
 # Scatter plots
-qplot(Age, Sex, colour=SurvivedFact, data=train, geom="point", alpha = I(0.5))
-qplot(Age, Fare, colour=SurvivedFact, data=train, geom="point", alpha = I(0.5)
-      , ylim=c(0, 300))
+#qplot(Age, Fare, colour=SurvivedFact, data=train, geom="point", alpha = I(0.5)
+#      , ylim=c(0, 300))
 
 # Box plot
-ggplot(train, aes(x=SurvivedFact, y=Fare, fill=SurvivedFact)) + geom_boxplot() + 
-  guides(fill=FALSE) + coord_flip() + ylim(0, 200)
+#ggplot(train, aes(x=SurvivedFact, y=Fare, fill=SurvivedFact)) + geom_boxplot() + 
+#  guides(fill=FALSE) + coord_flip() + ylim(0, 200)
 
 # Density plots
 #ggplot(train, aes(x=Age, fill=SurvivedFact)) + geom_density(alpha=.3)
 #ggplot(train, aes(x=Fare, fill=SurvivedFact)) + geom_density(alpha=.3)
-
-
-
-#TODO extract title from Name
-#TODO create age bin (5/10/20)
-#TODO create SibSp bin (0 vs 1+)
-#TODO create Parch bin (0 vs 1+)
-#TODO merge SibSp and Parch
-#TODO extract info from Ticket
-#TODO create Fare bin
-#TODO extract info from Cabin
 
 # Create a file ready for submission on Kaggles website
 # and a file describing the model used
@@ -81,7 +71,7 @@ createSubmissionFile <- function(train, test, predictions, model) {
 #TODO Look into http://data.princeton.edu/R/glms.html
 # Create a model
 glm.fit <- glm( SurvivedFact ~ 
-       +  Sex + Pclass, family = binomial, data=train)
+                  +  Sex + Pclass, family = binomial, data=train)
 
 summary(glm.fit)
 
@@ -94,29 +84,44 @@ trainPredict <- ifelse(trainPredict > cutoff, 1, 0)
 
 # Evaluate the prediction on the training set
 table(trainPredict, train$SurvivedFact, dnn=c('Predict','Actual'))
-prop.table(table(trainPredict, train$SurvivedFact, dnn=c('Predict','Actual')),1)
 # Error rate
-mean(trainPredict != train$SurvivedFact)
+mean(trainPredict == train$SurvivedFact)
 
 testPredict <- predict.glm(glm.fit, newdata=test, type="response")
 testPredict <- ifelse(testPredict > cutoff, 1, 0)
 
 createSubmissionFile(train, test, testPredict, glm.fit)
  
+# Comparing two models ==========================
+
+glm.fit1 <- glm( SurvivedFact ~ 
+                   +  Sex + Pclass, family = binomial, data=train)
+glm.fit2 <- glm( SurvivedFact ~ 
+                   +  Sex * Pclass, family = binomial, data=train)
+
+summary(glm.fit1)
+summary(glm.fit2)
+
+anova(glm.fit1, glm.fit2, test = "Chisq")
+
+
 # Decision Tree =================================
 
 fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data=train, method="class")
 
-#plot(fit)
-#text(fit)
-#fancyRpartPlot(fit)
+plot(fit)
+text(fit)
+fancyRpartPlot(fit)
+trainPrediction <- predict(fit, type = "class")
+
+# Error rate
+mean(trainPrediction == train$SurvivedFact)
 
 Prediction <- predict(fit, test, type = "class")
 
 createSubmissionFile(train, test, Prediction, fit)
 
-
 # Going further =================================
 # Cross validation
-# Classification tree
-# Feature engineering (polynomial, interaction terms, ...)
+# Random forest
+# Feature engineering
