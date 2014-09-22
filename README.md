@@ -3,7 +3,7 @@ TitanicR
 
 This project will be presented during MTL Data's Hangout 'Demystifying Machine Learning' on September 25th, 2014
 
-It is a quick introduction to predictive analytics using the example of Kaggle's Titanic challenge.
+It is a quick introduction to predictive analytics using the example of Kaggle's Titanic challenge. The current version of the code includes a logistic regression and a decision tree.
 
 Kaggle Challenge: Titanic - Machine Learning from a Disaster 
 
