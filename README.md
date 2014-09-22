@@ -1,6 +1,10 @@
 TitanicR
 ========
 
+This project will be presented during MTL Data's Hangout 'Demystifying Machine Learning' on September 25th, 2014
+
+It is a quick introduction to predictive analytics using the example of Kaggle's Titanic challenge.
+
 Kaggle Challenge: Titanic - Machine Learning from a Disaster 
 
 [Link to the Kaggle Competition's page](http://www.kaggle.com/c/titanic-gettingStarted)
